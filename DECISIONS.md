@@ -97,3 +97,4 @@ Estos son casos límite que se identificaron y corrigieron explícitamente duran
 - Evicción de entradas antiguas en el rate limiter en memoria (actualmente puede crecer sin límite).
 - Un helper compartido para reducir duplicación en los tests E2E.
 - Ampliar la cobertura de ramas en las pruebas unitarias, especialmente de casos de error menos frecuentes.
+- Implementar un timeout con `AbortController` del lado del cliente para la request de confirmación (per spec §8), en vez de depender únicamente del delay simulado del servidor.

@@ -84,6 +84,8 @@ Tanto en el header de la aplicación como en la pantalla de login hay un botón 
 - **CSP con `'unsafe-inline'`**: la Content-Security-Policy configurada permite `'unsafe-inline'`, lo cual no es lo ideal para un endurecimiento de seguridad completo.
 - **Rate limiter en memoria**: el limitador de intentos de login vive en memoria del proceso, por lo que no funciona correctamente en un despliegue multi-instancia.
 - **Estado del mock y E2E**: el estado del mock (singleton en `globalThis`) se puede "drenar" (por ejemplo, quedarse sin saldo o sin contactos disponibles) si se corre la suite E2E repetidamente contra un servidor de desarrollo reutilizado sin reiniciarlo entre corridas.
+- **Timeout simulado sin `AbortController`**: el escenario `timeout` se simula con un delay del servidor (9-12s) y no con un `AbortController` del lado del cliente, por lo que ante un `timeout` aleatorio el usuario espera el delay completo antes de ver el estado — mejora futura.
+- **Header `x-mock-outcome`**: es una utilidad de pruebas para forzar un resultado de confirmación específico; ahora solo se honra fuera de producción (`NODE_ENV !== 'production'`).
 
 ## Tiempo invertido
 

@@ -51,7 +51,9 @@ export async function POST(req: Request) {
     }
 
     // Simulate the random confirmation behavior.
-    const outcome = pickOutcome(req.headers.get('x-mock-outcome'))
+    // x-mock-outcome is a test affordance; only honor it outside production.
+    const forced = process.env.NODE_ENV !== 'production' ? req.headers.get('x-mock-outcome') : null
+    const outcome = pickOutcome(forced)
     if (outcome === 'timeout') { await randomDelay(9000, 12000) }
 
     if (outcome !== 'success') {
