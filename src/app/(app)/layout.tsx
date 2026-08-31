@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { SESSION_COOKIE, decodeSession } from '@/lib/session'
 import { LogoutButton } from '@/components/feature/logout-button'
+import { ResetDemoControl } from '@/components/feature/reset-demo-control'
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies()
@@ -12,7 +13,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <div className="min-h-dvh">
       <header className="flex items-center justify-between border-b p-4">
         <span className="font-semibold">Hola, {user.name}</span>
-        <LogoutButton />
+        <div className="flex items-center gap-2">
+          <ResetDemoControl />
+          <LogoutButton />
+        </div>
       </header>
       <main className="p-4">{children}</main>
     </div>

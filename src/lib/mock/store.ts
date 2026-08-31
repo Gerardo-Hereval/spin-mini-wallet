@@ -62,4 +62,5 @@ export const store = {
     s.receiptsByKey.set(key, receipt)
     return receipt
   },
+  reset() { g.__wallet = undefined },
 }
