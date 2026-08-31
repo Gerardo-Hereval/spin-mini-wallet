@@ -18,7 +18,6 @@ export async function POST(req: Request) {
   await randomDelay(400, 900)
   const user = store.getUser()
   const res = NextResponse.json({ user })
-  // Set cookie on the response (testable; no request-scope dependency).
   res.cookies.set(SESSION_COOKIE, encodeSession(user), {
     httpOnly: true, secure: true, sameSite: 'lax', path: '/',
   })

@@ -10,7 +10,6 @@ export interface TransferPayload {
   forcedOutcome?: string
 }
 
-// Generate a new idempotency key. Once assigned to the payload, it persists across retries.
 function newKey(): string {
   return `txn_${Date.now()}_${Math.floor(Math.random() * 1e6)}`
 }

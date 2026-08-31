@@ -34,7 +34,7 @@ describe('POST /api/transactions', () => {
     ))
     const json = await res.json()
     expect(json.status).toBe('success')
-    expect(store.getBalanceCents()).toBe(balanceAfterFirst) // unchanged
+    expect(store.getBalanceCents()).toBe(balanceAfterFirst)
   })
   it('rejects an over-balance amount with insufficient_funds (422)', async () => {
     const res = await POST(req(
@@ -64,7 +64,7 @@ describe('POST /api/transactions', () => {
     expect(res.status).toBe(422)
     const json = await res.json()
     expect(json.status).toBe('insufficient_funds')
-    expect(store.listContacts().length).toBe(before) // contact not created
+    expect(store.listContacts().length).toBe(before)
   })
   it('newContact transaction that succeeds creates exactly one contact', async () => {
     const before = store.listContacts().length
@@ -74,12 +74,12 @@ describe('POST /api/transactions', () => {
     ))
     const json = await res.json()
     expect(json.status).toBe('success')
-    expect(store.listContacts().length).toBe(before + 1) // exactly one new contact
+    expect(store.listContacts().length).toBe(before + 1)
   })
   it('missing Idempotency-Key header returns 400', async () => {
     const res = await POST(req(
       { amountCents: 1000, recipientId: 'c1' },
-      { 'x-mock-outcome': 'success' }, // no idempotency-key
+      { 'x-mock-outcome': 'success' },
     ))
     expect(res.status).toBe(400)
     const json = await res.json()

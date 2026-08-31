@@ -9,10 +9,6 @@ import type { User } from '@/domain/session/types'
 
 type Field = 'identifier' | 'password'
 
-/**
- * Owns the login form: field state, per-field validation, touched tracking,
- * submit-gating and the (mock) login mutation. LoginForm stays presentational.
- */
 export function useLogin() {
   const router = useRouter()
   const setUser = useSessionStore((s) => s.setUser)

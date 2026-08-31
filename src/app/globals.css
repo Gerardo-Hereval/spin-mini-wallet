@@ -49,15 +49,6 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/*
- * Default shadcn light/dark tokens were removed here: this app commits to a
- * single fixed theme (thegridcn Poseidon, imported above) rather than a
- * user-toggleable light/dark scheme. All tokens consumed by the @theme
- * inline block above (background, foreground, card, popover, primary,
- * secondary, muted, accent, border, input, ring, chart-1..5, sidebar*,
- * radius) are defined by thegridcn-theme.css.
- */
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -69,11 +60,6 @@
     @apply font-sans;
   }
 }
-/*
- * Subtle Tron/Poseidon neon grid backdrop. Pure CSS, no dependencies.
- * Sits behind app content (negative z-index, non-interactive) and fades out
- * toward the edges so it never competes with balances or forms.
- */
 .grid-bg {
   position: fixed;
   inset: 0;
@@ -89,7 +75,6 @@
   mask-image: radial-gradient(130% 85% at 50% -5%, #000 32%, transparent 74%);
 }
 .grid-bg::after {
-  /* faint top glow in the theme's primary hue */
   content: "";
   position: absolute;
   inset: 0;

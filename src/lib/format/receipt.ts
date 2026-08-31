@@ -1,10 +1,6 @@
 import { formatMoney } from '@/domain/money/money'
 import type { Receipt } from '@/domain/transaction/types'
 
-/**
- * Plain-text summary of a receipt, suitable for sharing via the OS share sheet,
- * WhatsApp, email, etc. Generic and channel-agnostic.
- */
 export function formatReceiptText(receipt: Receipt): string {
   const fecha = new Date(receipt.createdAt).toLocaleString('es-MX', {
     dateStyle: 'medium',

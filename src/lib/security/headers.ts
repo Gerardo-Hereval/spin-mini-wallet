@@ -1,5 +1,3 @@
-// React and Turbopack rely on eval() in development only (HMR / callstack
-// reconstruction); production never uses eval, so 'unsafe-eval' is dev-only.
 const scriptSrc =
   process.env.NODE_ENV === 'production'
     ? "script-src 'self' 'unsafe-inline'"

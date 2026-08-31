@@ -10,10 +10,6 @@ const OPTIONS: { value: string; label: string }[] = [
   { value: 'unknown_error', label: 'Error desconocido' },
 ]
 
-/**
- * Floating dev-only control to force the next transaction's outcome.
- * Renders nothing in production.
- */
 export function DevOutcomeToggle() {
   const forced = useDevStore((s) => s.forcedOutcome)
   const setForced = useDevStore((s) => s.setForcedOutcome)

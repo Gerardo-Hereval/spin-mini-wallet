@@ -5,7 +5,6 @@ import type { Movement } from '@/domain/movement/types'
 import type { Receipt } from '@/domain/transaction/types'
 import { SEED_USER, SEED_BALANCE, SEED_CONTACTS, SEED_MOVEMENTS } from './data'
 
-// In-memory singleton (survives within a running process only).
 const g = globalThis as unknown as { __wallet?: WalletState }
 interface WalletState {
   user: typeof SEED_USER

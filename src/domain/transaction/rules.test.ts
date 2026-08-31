@@ -3,7 +3,7 @@ import { validateTransaction } from './rules'
 import { fromCents } from '@/domain/money/money'
 
 const contact = { id: '1', name: 'Ana', handle: 'ana@x.com' }
-const ctx = { balanceCents: fromCents(10000) } // $100
+const ctx = { balanceCents: fromCents(10000) }
 
 describe('validateTransaction', () => {
   it('accepts a valid transaction', () => {

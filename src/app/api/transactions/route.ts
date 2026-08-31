@@ -16,13 +16,11 @@ export async function POST(req: Request) {
   const key = req.headers.get('idempotency-key')
   if (!key) return NextResponse.json({ status: 'unknown_error' } satisfies TransactionResult, { status: 400 })
 
-  // Idempotent replay: return the stored receipt without charging again.
   const existing = store.getReceiptByKey(key)
   if (existing) {
     return NextResponse.json({ status: 'success', receipt: existing } satisfies TransactionResult)
   }
 
-  // Reserve the key synchronously to prevent double-charge race.
   if (!store.beginKey(key)) {
     return NextResponse.json({ status: 'unknown_error' } satisfies TransactionResult, { status: 409 })
   }
@@ -32,14 +30,11 @@ export async function POST(req: Request) {
     const parsed = transactionSchema.safeParse(body)
     if (!parsed.success) return NextResponse.json({ status: 'unknown_error' } satisfies TransactionResult, { status: 422 })
 
-    // Resolve recipient (existing favorite or newly-saved contact).
-    // For newContact, build a candidate in memory (not persisted yet).
     const { amountCents, recipientId, newContact } = parsed.data
     const recipient: Contact | null = newContact
       ? { id: 'pending', name: newContact.name, handle: newContact.handle }
       : store.listContacts().find((c) => c.id === recipientId) ?? null
 
-    // Server-side re-validation (never trust the client).
     const check = validateTransaction(
       { amountCents: fromCents(amountCents), recipient },
       { balanceCents: store.getBalanceCents() },
@@ -50,8 +45,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ status } satisfies TransactionResult, { status: 422 })
     }
 
-    // Simulate the random confirmation behavior.
-    // x-mock-outcome is a test affordance; only honor it outside production.
     const forced = process.env.NODE_ENV !== 'production' ? req.headers.get('x-mock-outcome') : null
     const outcome = pickOutcome(forced)
     if (outcome === 'timeout') { await randomDelay(9000, 12000) }
@@ -61,7 +54,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ status: outcome } satisfies TransactionResult, { status: code })
     }
 
-    // On success, persist the new contact if needed.
     let finalRecipient = check.input.recipient
     if (newContact && finalRecipient.id === 'pending') {
       finalRecipient = store.addContact(newContact.name, newContact.handle)

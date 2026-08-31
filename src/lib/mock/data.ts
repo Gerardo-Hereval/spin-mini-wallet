@@ -4,7 +4,7 @@ import type { Movement } from '@/domain/movement/types'
 import type { User } from '@/domain/session/types'
 
 export const SEED_USER: User = { id: 'u1', name: 'Carlos Valenzuela' }
-export const SEED_BALANCE = fromCents(125_000) // $1,250.00
+export const SEED_BALANCE = fromCents(125_000)
 export const SEED_CONTACTS: Contact[] = [
   { id: 'c1', name: 'Ana Díaz', handle: 'ana@spin.mx' },
   { id: 'c2', name: 'Luis Pérez', handle: '55 1234 5678' },

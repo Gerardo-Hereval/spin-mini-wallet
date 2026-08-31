@@ -1,9 +1,5 @@
 import { formatMoney, type Cents } from '@/domain/money/money'
 
-/**
- * Presentational: shows the available balance and, when an amount is being
- * entered, the resulting balance after sending (red when it would go negative).
- */
 export function BalancePreview({ balanceCents, afterCents }: {
   balanceCents: Cents
   afterCents?: Cents

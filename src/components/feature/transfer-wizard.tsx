@@ -36,14 +36,8 @@ export function TransferWizard() {
   const [result, setResult] = useState<TransactionResult | null>(null)
   const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null)
 
-  // Entering the wizard always starts a fresh flow. `step` lives in the global
-  // transfer store (survives navigation) while `result` is local (reset on
-  // remount); without this, returning to /transfer after a completed transfer
-  // would land on a 'result' step with no result and render a blank screen.
   useLayoutEffect(() => {
     reset()
-    setResult(null)
-    setIdempotencyKey(null)
   }, [reset])
 
   const amountError = form.errors.find((e) => e.code !== 'recipient_required')

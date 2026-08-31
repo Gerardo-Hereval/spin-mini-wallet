@@ -1,10 +1,6 @@
 import { formatMoney } from '@/domain/money/money'
 import type { Receipt } from '@/domain/transaction/types'
 
-/**
- * Renders a clean, self-contained receipt card to a PNG Blob using the Canvas
- * API (no dependencies). Client-only — relies on document/canvas.
- */
 export async function renderReceiptImage(receipt: Receipt): Promise<Blob> {
   const scale = 2
   const w = 720
@@ -18,7 +14,6 @@ export async function renderReceiptImage(receipt: Receipt): Promise<Blob> {
 
   const font = (spec: string) => `${spec} system-ui, -apple-system, "Segoe UI", sans-serif`
 
-  // Background + card
   ctx.fillStyle = '#0a0f1e'
   ctx.fillRect(0, 0, w, h)
   ctx.beginPath()
@@ -32,7 +27,6 @@ export async function renderReceiptImage(receipt: Receipt): Promise<Blob> {
 
   ctx.textAlign = 'center'
 
-  // Header
   ctx.fillStyle = '#38bdf8'
   ctx.font = font('bold 20px')
   ctx.fillText('SPIN WALLET', w / 2, 80)
@@ -40,12 +34,10 @@ export async function renderReceiptImage(receipt: Receipt): Promise<Blob> {
   ctx.font = font('600 18px')
   ctx.fillText('¡Transacción exitosa!', w / 2, 118)
 
-  // Amount
   ctx.fillStyle = '#ffffff'
   ctx.font = font('bold 54px')
   ctx.fillText(formatMoney(receipt.amountCents), w / 2, 202)
 
-  // Recipient
   ctx.fillStyle = '#9fb3c8'
   ctx.font = font('18px')
   ctx.fillText(`Para ${receipt.recipient.name}`, w / 2, 250)
@@ -53,14 +45,12 @@ export async function renderReceiptImage(receipt: Receipt): Promise<Blob> {
   ctx.font = font('15px')
   ctx.fillText(receipt.recipient.handle, w / 2, 278)
 
-  // Divider
   ctx.strokeStyle = 'rgba(255,255,255,0.08)'
   ctx.beginPath()
   ctx.moveTo(80, 322)
   ctx.lineTo(w - 80, 322)
   ctx.stroke()
 
-  // ID (left) + date (right)
   ctx.fillStyle = '#8598ab'
   ctx.font = font('14px')
   ctx.textAlign = 'left'
@@ -72,7 +62,6 @@ export async function renderReceiptImage(receipt: Receipt): Promise<Blob> {
   ctx.textAlign = 'right'
   ctx.fillText(fecha, w - 80, 356)
 
-  // Footer
   ctx.textAlign = 'center'
   ctx.fillStyle = '#5b6b7d'
   ctx.font = font('13px')
