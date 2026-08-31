@@ -605,6 +605,7 @@ git commit -m "feat(mock): in-memory store, latency, deterministic outcome selec
 - Produces:
   - `SESSION_COOKIE = 'session'`
   - `encodeSession(user: User): string` and `decodeSession(token: string | undefined): User | null` (base64 JSON — mock, not secure).
+  - `readSessionFromCookieHeader(header: string | null): User | null` — parses a raw `Cookie` header (testable without Next request scope).
   - `middleware` redirects unauthenticated requests for `/home` and `/transfer` to `/login`.
 
 - [ ] **Step 1: Write failing tests**
@@ -613,7 +614,7 @@ git commit -m "feat(mock): in-memory store, latency, deterministic outcome selec
 
 ```ts
 import { describe, it, expect } from 'vitest'
-import { encodeSession, decodeSession } from './session'
+import { encodeSession, decodeSession, readSessionFromCookieHeader, SESSION_COOKIE } from './session'
 
 describe('session token', () => {
   it('round-trips a user', () => {
@@ -622,6 +623,20 @@ describe('session token', () => {
   })
   it('returns null for undefined', () => { expect(decodeSession(undefined)).toBeNull() })
   it('returns null for garbage', () => { expect(decodeSession('!!!')).toBeNull() })
+})
+
+describe('readSessionFromCookieHeader', () => {
+  it('reads the session user from a Cookie header', () => {
+    const token = encodeSession({ id: 'u1', name: 'Carlos' })
+    const header = `foo=bar; ${SESSION_COOKIE}=${token}; baz=qux`
+    expect(readSessionFromCookieHeader(header)).toEqual({ id: 'u1', name: 'Carlos' })
+  })
+  it('returns null when the cookie is absent', () => {
+    expect(readSessionFromCookieHeader('foo=bar')).toBeNull()
+  })
+  it('returns null for a null header', () => {
+    expect(readSessionFromCookieHeader(null)).toBeNull()
+  })
 })
 ```
 
@@ -655,6 +670,14 @@ export function decodeSession(token: string | undefined): User | null {
   } catch {
     return null
   }
+}
+
+export function readSessionFromCookieHeader(header: string | null): User | null {
+  if (!header) return null
+  const prefix = `${SESSION_COOKIE}=`
+  const entry = header.split(';').map((s) => s.trim()).find((s) => s.startsWith(prefix))
+  if (!entry) return null
+  return decodeSession(entry.slice(prefix.length))
 }
 ```
 
@@ -769,7 +792,6 @@ Expected: PASS.
 
 ```ts
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { loginSchema } from '@/lib/validation/schemas'
 import { store } from '@/lib/mock/store'
 import { SESSION_COOKIE, encodeSession } from '@/lib/session'
@@ -788,11 +810,12 @@ export async function POST(req: Request) {
   }
   await randomDelay(400, 900)
   const user = store.getUser()
-  const cookieStore = await cookies()
-  cookieStore.set(SESSION_COOKIE, encodeSession(user), {
+  const res = NextResponse.json({ user })
+  // Set cookie on the response (testable; no request-scope dependency).
+  res.cookies.set(SESSION_COOKIE, encodeSession(user), {
     httpOnly: true, secure: true, sameSite: 'lax', path: '/',
   })
-  return NextResponse.json({ user })
+  return res
 }
 ```
 
@@ -800,13 +823,12 @@ export async function POST(req: Request) {
 
 ```ts
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 import { SESSION_COOKIE } from '@/lib/session'
 
 export async function POST() {
-  const cookieStore = await cookies()
-  cookieStore.delete(SESSION_COOKIE)
-  return NextResponse.json({ ok: true })
+  const res = NextResponse.json({ ok: true })
+  res.cookies.delete(SESSION_COOKIE)
+  return res
 }
 ```
 
@@ -967,12 +989,10 @@ import { validateTransaction } from '@/domain/transaction/rules'
 import type { TransactionResult } from '@/domain/transaction/types'
 import { pickOutcome } from '@/lib/mock/outcome'
 import { randomDelay } from '@/lib/mock/latency'
-import { decodeSession, SESSION_COOKIE } from '@/lib/session'
-import { cookies } from 'next/headers'
+import { readSessionFromCookieHeader } from '@/lib/session'
 
 export async function POST(req: Request) {
-  const cookieStore = await cookies()
-  const user = decodeSession(cookieStore.get(SESSION_COOKIE)?.value)
+  const user = readSessionFromCookieHeader(req.headers.get('cookie'))
   if (!user) return NextResponse.json({ status: 'unknown_error' }, { status: 401 })
 
   const key = req.headers.get('idempotency-key')
@@ -2142,7 +2162,172 @@ git commit -m "feat(transfer): wizard with amount, contacts, summary, receipt, e
 
 ---
 
-## Task 13: E2E tests (Playwright)
+## Task 13: Demo reset button (clear cookies + mock data)
+
+**Files:**
+- Create: `src/app/api/dev/reset/route.ts`, `src/hooks/use-reset-demo.ts`, `src/components/feature/reset-demo-button.tsx`
+- Modify: `src/lib/mock/store.ts` (add `reset()`), `src/app/(app)/layout.tsx` (button in header), `src/app/(auth)/login/page.tsx` (button in footer)
+- Test: `src/app/api/dev/reset/route.test.ts`
+
+**Interfaces:**
+- Consumes: `store`, `SESSION_COOKIE`, `SEED_BALANCE`.
+- Produces:
+  - `store.reset(): void` — restores the in-memory singleton to seed state.
+  - `POST /api/dev/reset` — resets the store and clears the session cookie; gated by `ALLOW_DEMO_RESET !== 'false'` (returns 403 when disabled).
+  - `useResetDemo()` — calls the route, clears the session store, redirects to `/login`.
+  - `ResetDemoButton` (presentational) with an `onReset` prop.
+
+- [ ] **Step 1: Add `reset()` to the store**
+
+In `src/lib/mock/store.ts`, add to the `store` object:
+
+```ts
+  reset() { g.__wallet = undefined },
+```
+
+(Next access to `state()` re-seeds from `SEED_*`.)
+
+- [ ] **Step 2: Write failing route test**
+
+`src/app/api/dev/reset/route.test.ts`:
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { POST } from './route'
+import { store } from '@/lib/mock/store'
+import { SEED_BALANCE } from '@/lib/mock/data'
+import { fromCents } from '@/domain/money/money'
+
+describe('POST /api/dev/reset', () => {
+  it('restores the store to seed balance', async () => {
+    const recipient = store.listContacts()[0]
+    store.applyTransaction(fromCents(500), recipient, 'reset-test-key')
+    expect(store.getBalanceCents()).not.toBe(SEED_BALANCE)
+
+    const res = await POST()
+    expect(res.status).toBe(200)
+    expect((await res.json()).ok).toBe(true)
+    expect(store.getBalanceCents()).toBe(SEED_BALANCE)
+  })
+})
+```
+
+- [ ] **Step 3: Run to verify fail**
+
+Run: `npx vitest run src/app/api/dev/reset/route.test.ts`
+Expected: FAIL (module not found).
+
+- [ ] **Step 4: Implement the reset route**
+
+`src/app/api/dev/reset/route.ts`:
+
+```ts
+import { NextResponse } from 'next/server'
+import { store } from '@/lib/mock/store'
+import { SESSION_COOKIE } from '@/lib/session'
+
+export async function POST() {
+  if (process.env.ALLOW_DEMO_RESET === 'false') {
+    return NextResponse.json({ error: 'disabled' }, { status: 403 })
+  }
+  store.reset()
+  const res = NextResponse.json({ ok: true })
+  res.cookies.delete(SESSION_COOKIE)
+  return res
+}
+```
+
+- [ ] **Step 5: Run to verify pass**
+
+Run: `npx vitest run src/app/api/dev/reset/route.test.ts`
+Expected: PASS.
+
+- [ ] **Step 6: Implement hook + presentational button**
+
+`src/hooks/use-reset-demo.ts`:
+
+```ts
+'use client'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
+import { apiClient } from '@/lib/api-client'
+import { useSessionStore } from '@/stores/session-store'
+
+export function useResetDemo() {
+  const router = useRouter()
+  const qc = useQueryClient()
+  const clear = useSessionStore((s) => s.clear)
+  const [isPending, setPending] = useState(false)
+
+  async function reset() {
+    setPending(true)
+    try {
+      await apiClient.post('/api/dev/reset', {})
+      clear()
+      qc.clear()
+      router.push('/login')
+      router.refresh()
+    } finally {
+      setPending(false)
+    }
+  }
+  return { reset, isPending }
+}
+```
+
+`src/components/feature/reset-demo-button.tsx`:
+
+```tsx
+'use client'
+import { Button } from '@/components/ui/button'
+
+export function ResetDemoButton({ onReset, isPending }: { onReset: () => void; isPending: boolean }) {
+  return (
+    <Button variant="ghost" size="sm" onClick={onReset} disabled={isPending} title="Reinicia datos, mocks y sesión">
+      {isPending ? 'Reiniciando…' : 'Reiniciar demo'}
+    </Button>
+  )
+}
+```
+
+- [ ] **Step 7: Wire the button into the app header and the login page**
+
+In `src/app/(app)/layout.tsx`, add a small client wrapper next to `LogoutButton`. Create `src/components/feature/reset-demo-control.tsx`:
+
+```tsx
+'use client'
+import { ResetDemoButton } from './reset-demo-button'
+import { useResetDemo } from '@/hooks/use-reset-demo'
+
+export function ResetDemoControl() {
+  const { reset, isPending } = useResetDemo()
+  return <ResetDemoButton onReset={reset} isPending={isPending} />
+}
+```
+
+Then render `<ResetDemoControl />` in the header (next to `<LogoutButton />`) and at the bottom of the login page (`src/app/(auth)/login/page.tsx`), e.g.:
+
+```tsx
+// inside login page, below the form container
+<div className="mt-6 text-center"><ResetDemoControl /></div>
+```
+
+- [ ] **Step 8: Typecheck + tests**
+
+Run: `npm test && npx tsc --noEmit`
+Expected: PASS, no type errors.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add src/app/api/dev src/hooks/use-reset-demo.ts src/components/feature/reset-demo-button.tsx src/components/feature/reset-demo-control.tsx src/lib/mock/store.ts "src/app/(app)/layout.tsx" "src/app/(auth)/login/page.tsx"
+git commit -m "feat(demo): reset button to clear cookies, mock data, and session"
+```
+
+---
+
+## Task 14: E2E tests (Playwright)
 
 **Files:**
 - Create: `tests/e2e/wallet.spec.ts`
@@ -2223,7 +2408,7 @@ git commit -m "test(e2e): login, guard, happy-path transfer, network-error retry
 
 ---
 
-## Task 14: Deployment (Railway) + documentation
+## Task 15: Deployment (Railway) + documentation
 
 **Files:**
 - Create: `Dockerfile`, `.dockerignore`, `railway.toml`, `README.md`, `DECISIONS.md`, `AI_USAGE.md`
@@ -2280,7 +2465,7 @@ restartPolicyType = "on_failure"
 
 - [ ] **Step 3: Write README.md**
 
-Include: what it is, stack, `npm install`, `npm run dev`, `npm test`, `npm run test:e2e`, build/deploy notes (Railway), **known limitations** (in-memory mock resets, mock cookie not secure, single-replica), and **declared time spent** (fill in the real number).
+Include: what it is, stack, `npm install`, `npm run dev`, `npm test`, `npm run test:e2e`, build/deploy notes (Railway), the **"Reiniciar demo"** button and the `ALLOW_DEMO_RESET` env var (`false` disables it), **known limitations** (in-memory mock resets, mock cookie not secure, single-replica, demo reset only affects one replica), and **declared time spent** (fill in the real number).
 
 - [ ] **Step 4: Write DECISIONS.md**
 
@@ -2306,6 +2491,7 @@ git commit -m "chore: Railway deployment config + project documentation"
 
 ## Self-Review Notes (for the planner, not a task)
 
-- **Spec coverage:** Login (T10), Home + states (T11), Nueva Transacción (T12), Confirmación 5 outcomes (T7 + T12), business rules in domain reused server-side (T3 + T7), rendering strategy (T10/T11/T12), session cookie + guard (T5/T11), scalability via idempotency/backoff/SSR/cursor-ready (T7/T8), security (T6/T9), testing unit + E2E (T2/T3/T4/T5/T6/T7/T8/T9/T10/T12 + T13), deployment (T14), docs (T14). All spec sections map to a task.
-- **Type consistency:** `Cents`, `Contact`, `TransactionResult`, `ValidationResult`, `store` methods, `pickOutcome`, `checkRateLimit`, `encodeSession/decodeSession`, `useCreateTransaction` payload — names are consistent across tasks.
-- **Known simplifications for the reviewer:** movements pagination is designed (cursor-ready shape) but seeded small; the `rate-limit` stub in T6 is intentionally replaced in T9.
+- **Spec coverage:** Login (T10), Home + states (T11), Nueva Transacción (T12), Confirmación 5 outcomes (T7 + T12), business rules in domain reused server-side (T3 + T7), rendering strategy (T10/T11/T12), session cookie + guard (T5/T11), scalability via idempotency/backoff/SSR/cursor-ready (T7/T8), security (T6/T9), demo reset (T13), testing unit + E2E (T2/T3/T4/T5/T6/T7/T8/T9/T10/T12/T13 + T14), deployment (T15), docs (T15). All spec sections map to a task.
+- **Type consistency:** `Cents`, `Contact`, `TransactionResult`, `ValidationResult`, `store` methods (incl. `reset`), `pickOutcome`, `checkRateLimit`, `encodeSession/decodeSession/readSessionFromCookieHeader`, `useCreateTransaction` payload — names are consistent across tasks.
+- **Cookie testability:** routes set/delete cookies via `NextResponse.cookies` and read sessions via `readSessionFromCookieHeader(req.headers.get('cookie'))`, so route handlers are unit-testable without a Next request scope.
+- **Known simplifications for the reviewer:** movements pagination is designed (cursor-ready shape) but seeded small; the `rate-limit` stub in T6 is intentionally replaced in T9; the demo reset (T13) is gated by `ALLOW_DEMO_RESET` and only affects a single Railway replica.
