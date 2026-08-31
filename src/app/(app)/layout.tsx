@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { SESSION_COOKIE, decodeSession } from '@/lib/session'
 import { LogoutButton } from '@/components/feature/logout-button'
 import { ResetDemoControl } from '@/components/feature/reset-demo-control'
+import { DevOutcomeToggle } from '@/components/feature/dev-outcome-toggle'
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies()
@@ -19,6 +20,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="p-4">{children}</main>
+      <DevOutcomeToggle />
     </div>
   )
 }

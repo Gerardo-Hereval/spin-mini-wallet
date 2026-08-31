@@ -4,6 +4,7 @@ import { useWallet } from '@/hooks/use-wallet'
 import { useContacts, useAddContact } from '@/hooks/use-contacts'
 import { useCreateTransaction } from '@/hooks/use-create-transaction'
 import { useTransferStore } from '@/stores/transfer-store'
+import { useDevStore } from '@/stores/dev-store'
 import { useTransferForm } from '@/hooks/use-transfer-form'
 import { fromCents, type Cents } from '@/domain/money/money'
 import { AmountInput } from './amount-input'
@@ -30,6 +31,7 @@ export function TransferWizard() {
   const contacts = useContacts()
   const addContact = useAddContact()
   const createTx = useCreateTransaction()
+  const forcedOutcome = useDevStore((s) => s.forcedOutcome)
   const [result, setResult] = useState<TransactionResult | null>(null)
   const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null)
 
@@ -43,6 +45,7 @@ export function TransferWizard() {
       amountCents: form.amountCents ?? 0,
       recipientId: recipient?.id,
       idempotencyKey: key,
+      forcedOutcome: forcedOutcome ?? undefined,
     })
     setResult(res)
     goto('result')

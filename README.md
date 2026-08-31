@@ -77,6 +77,10 @@ El proyecto se despliega vía **Docker** usando el modo `standalone` de Next.js 
 
 Tanto en el header de la aplicación como en la pantalla de login hay un botón **"Reiniciar demo"** que llama a `POST /api/dev/reset`. Este endpoint restablece los datos mock (saldo, movimientos, contactos) a su estado inicial y cierra la sesión activa, permitiendo repetir la demo desde cero. Este botón se puede desactivar con `ALLOW_DEMO_RESET=false`.
 
+## Forzar el desenlace (solo desarrollo)
+
+Como la confirmación resuelve en un desenlace aleatorio, en **modo desarrollo** aparece un pequeño panel flotante ("DEV · forzar desenlace") que permite fijar el resultado de la siguiente transacción (éxito, error de red, fondos insuficientes, timeout o error desconocido) para validar cada camino de forma determinista. El panel no se renderiza en producción y la API ignora el header `x-mock-outcome` fuera de desarrollo.
+
 ## Limitaciones conocidas
 
 - **Mock en memoria**: los datos (saldo, movimientos, contactos) viven en un singleton en memoria del proceso. Se reinician en cada redeploy y **no se comparten entre réplicas** — la app está pensada para correr con una sola réplica.
