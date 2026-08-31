@@ -13,6 +13,7 @@ interface WalletState {
   contacts: Contact[]
   movements: Movement[]
   receiptsByKey: Map<string, Receipt>
+  inFlightKeys: Set<string>
   seq: number
 }
 function state(): WalletState {
@@ -20,7 +21,7 @@ function state(): WalletState {
     g.__wallet = {
       user: SEED_USER, balanceCents: SEED_BALANCE,
       contacts: [...SEED_CONTACTS], movements: [...SEED_MOVEMENTS],
-      receiptsByKey: new Map(), seq: 100,
+      receiptsByKey: new Map(), inFlightKeys: new Set(), seq: 100,
     }
   }
   return g.__wallet
@@ -39,6 +40,15 @@ export const store = {
     return c
   },
   getReceiptByKey: (key: string) => state().receiptsByKey.get(key),
+  beginKey(key: string): boolean {
+    const s = state()
+    if (s.receiptsByKey.has(key) || s.inFlightKeys.has(key)) return false
+    s.inFlightKeys.add(key)
+    return true
+  },
+  endKey(key: string): void {
+    state().inFlightKeys.delete(key)
+  },
   applyTransaction(amountCents: Cents, recipient: Contact, key: string): Receipt {
     const s = state()
     const receipt: Receipt = {

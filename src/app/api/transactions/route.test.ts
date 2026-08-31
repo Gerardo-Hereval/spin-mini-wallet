@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { POST } from './route'
 import { encodeSession } from '@/lib/session'
 import { store } from '@/lib/mock/store'
@@ -54,5 +54,49 @@ describe('POST /api/transactions', () => {
     const json = await res.json()
     expect(json.status).toBe('network_error')
     expect(store.getBalanceCents()).toBe(before)
+  })
+  it('newContact transaction that fails validation does NOT persist contact', async () => {
+    const before = store.listContacts().length
+    const res = await POST(req(
+      { amountCents: 99_999_999, newContact: { name: 'Alice', handle: '@alice' } },
+      { 'idempotency-key': 'k4' },
+    ))
+    expect(res.status).toBe(422)
+    const json = await res.json()
+    expect(json.status).toBe('insufficient_funds')
+    expect(store.listContacts().length).toBe(before) // contact not created
+  })
+  it('newContact transaction that succeeds creates exactly one contact', async () => {
+    const before = store.listContacts().length
+    const res = await POST(req(
+      { amountCents: 1000, newContact: { name: 'Bob', handle: '@bob' } },
+      { 'x-mock-outcome': 'success', 'idempotency-key': 'k5' },
+    ))
+    const json = await res.json()
+    expect(json.status).toBe('success')
+    expect(store.listContacts().length).toBe(before + 1) // exactly one new contact
+  })
+  it('missing Idempotency-Key header returns 400', async () => {
+    const res = await POST(req(
+      { amountCents: 1000, recipientId: 'c1' },
+      { 'x-mock-outcome': 'success' }, // no idempotency-key
+    ))
+    expect(res.status).toBe(400)
+    const json = await res.json()
+    expect(json.status).toBe('unknown_error')
+  })
+  it('missing/invalid session cookie returns 401', async () => {
+    const res = new Request('http://localhost/api/transactions', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'idempotency-key': 'k6',
+      },
+      body: JSON.stringify({ amountCents: 1000, recipientId: 'c1' }),
+    })
+    const result = await POST(res)
+    expect(result.status).toBe(401)
+    const json = await result.json()
+    expect(json.status).toBe('unknown_error')
   })
 })

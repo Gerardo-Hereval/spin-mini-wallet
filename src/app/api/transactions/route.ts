@@ -4,16 +4,17 @@ import { store } from '@/lib/mock/store'
 import { fromCents } from '@/domain/money/money'
 import { validateTransaction } from '@/domain/transaction/rules'
 import type { TransactionResult } from '@/domain/transaction/types'
+import type { Contact } from '@/domain/contact/types'
 import { pickOutcome } from '@/lib/mock/outcome'
 import { randomDelay } from '@/lib/mock/latency'
 import { readSessionFromCookieHeader } from '@/lib/session'
 
 export async function POST(req: Request) {
   const user = readSessionFromCookieHeader(req.headers.get('cookie'))
-  if (!user) return NextResponse.json({ status: 'unknown_error' }, { status: 401 })
+  if (!user) return NextResponse.json({ status: 'unknown_error' } satisfies TransactionResult, { status: 401 })
 
   const key = req.headers.get('idempotency-key')
-  if (!key) return NextResponse.json({ error: 'missing_idempotency_key' }, { status: 400 })
+  if (!key) return NextResponse.json({ status: 'unknown_error' } satisfies TransactionResult, { status: 400 })
 
   // Idempotent replay: return the stored receipt without charging again.
   const existing = store.getReceiptByKey(key)
@@ -21,37 +22,53 @@ export async function POST(req: Request) {
     return NextResponse.json({ status: 'success', receipt: existing } satisfies TransactionResult)
   }
 
-  const body = await req.json().catch(() => null)
-  const parsed = transactionSchema.safeParse(body)
-  if (!parsed.success) return NextResponse.json({ status: 'unknown_error' }, { status: 422 })
-
-  // Resolve recipient (existing favorite or newly-saved contact).
-  const { amountCents, recipientId, newContact } = parsed.data
-  const recipient = newContact
-    ? store.addContact(newContact.name, newContact.handle)
-    : store.listContacts().find((c) => c.id === recipientId) ?? null
-
-  // Server-side re-validation (never trust the client).
-  const check = validateTransaction(
-    { amountCents: fromCents(amountCents), recipient },
-    { balanceCents: store.getBalanceCents() },
-  )
-  if (!check.ok) {
-    const insufficient = check.errors.some((e) => e.code === 'insufficient_balance')
-    const status: TransactionResult['status'] = insufficient ? 'insufficient_funds' : 'unknown_error'
-    return NextResponse.json({ status } satisfies TransactionResult, { status: 422 })
+  // Reserve the key synchronously to prevent double-charge race.
+  if (!store.beginKey(key)) {
+    return NextResponse.json({ status: 'unknown_error' } satisfies TransactionResult, { status: 409 })
   }
 
-  // Simulate the random confirmation behavior.
-  const outcome = pickOutcome(req.headers.get('x-mock-outcome'))
-  if (outcome === 'timeout') { await randomDelay(9000, 12000) }
+  try {
+    const body = await req.json().catch(() => null)
+    const parsed = transactionSchema.safeParse(body)
+    if (!parsed.success) return NextResponse.json({ status: 'unknown_error' } satisfies TransactionResult, { status: 422 })
 
-  if (outcome !== 'success') {
-    const code = outcome === 'insufficient_funds' ? 422 : 502
-    return NextResponse.json({ status: outcome } satisfies TransactionResult, { status: code })
+    // Resolve recipient (existing favorite or newly-saved contact).
+    // For newContact, build a candidate in memory (not persisted yet).
+    const { amountCents, recipientId, newContact } = parsed.data
+    const recipient: Contact | null = newContact
+      ? { id: 'pending', name: newContact.name, handle: newContact.handle }
+      : store.listContacts().find((c) => c.id === recipientId) ?? null
+
+    // Server-side re-validation (never trust the client).
+    const check = validateTransaction(
+      { amountCents: fromCents(amountCents), recipient },
+      { balanceCents: store.getBalanceCents() },
+    )
+    if (!check.ok) {
+      const insufficient = check.errors.some((e) => e.code === 'insufficient_balance')
+      const status: TransactionResult['status'] = insufficient ? 'insufficient_funds' : 'unknown_error'
+      return NextResponse.json({ status } satisfies TransactionResult, { status: 422 })
+    }
+
+    // Simulate the random confirmation behavior.
+    const outcome = pickOutcome(req.headers.get('x-mock-outcome'))
+    if (outcome === 'timeout') { await randomDelay(9000, 12000) }
+
+    if (outcome !== 'success') {
+      const code = outcome === 'insufficient_funds' ? 422 : 502
+      return NextResponse.json({ status: outcome } satisfies TransactionResult, { status: code })
+    }
+
+    // On success, persist the new contact if needed.
+    let finalRecipient = check.input.recipient
+    if (newContact && finalRecipient.id === 'pending') {
+      finalRecipient = store.addContact(newContact.name, newContact.handle)
+    }
+
+    await randomDelay(300, 700)
+    const receipt = store.applyTransaction(check.input.amountCents, finalRecipient, key)
+    return NextResponse.json({ status: 'success', receipt } satisfies TransactionResult)
+  } finally {
+    store.endKey(key)
   }
-
-  await randomDelay(300, 700)
-  const receipt = store.applyTransaction(check.input.amountCents, check.input.recipient, key)
-  return NextResponse.json({ status: 'success', receipt } satisfies TransactionResult)
 }
