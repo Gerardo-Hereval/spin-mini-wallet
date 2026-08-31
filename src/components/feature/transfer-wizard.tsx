@@ -8,6 +8,7 @@ import { useDevStore } from '@/stores/dev-store'
 import { useTransferForm } from '@/hooks/use-transfer-form'
 import { fromCents, type Cents } from '@/domain/money/money'
 import { AmountInput } from './amount-input'
+import { BalancePreview } from './balance-preview'
 import { ContactPicker } from './contact-picker'
 import { TransferSummary } from './transfer-summary'
 import { ReceiptView } from './receipt-view'
@@ -71,8 +72,10 @@ export function TransferWizard() {
 
   function renderStep() {
     if (step === 'amount') {
+      const afterCents = form.amountCents !== null ? (fromCents(balance - form.amountCents) as Cents) : undefined
       return (
         <div className="flex flex-col gap-4">
+          {balanceReady && <BalancePreview balanceCents={balance} afterCents={afterCents} />}
           <AmountInput value={amountRaw} onChange={setAmountRaw} error={amountRaw ? amountErrorMsg : undefined} />
           <Button disabled={!balanceReady || !!amountErrorMsg || amountRaw.trim() === ''} onClick={() => goto('recipient')}>Continuar</Button>
         </div>
