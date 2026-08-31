@@ -2,3 +2,18 @@ node_modules/
 .next/
 .env*
 *.log
+
+# SDD scratch — must not be committed
+/.superpowers/
+
+# build artifacts / misc
+/out/
+/build
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+.vercel
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
