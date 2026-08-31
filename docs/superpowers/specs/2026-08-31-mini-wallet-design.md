@@ -327,3 +327,28 @@ resto como evolución.
 - HTTPS/HSTS, WAF, escaneo de dependencias, SRI.
 - Autorización fina + límites de velocidad/monto, detección de fraude y **audit log
   append-only** (el mismo ledger de §15).
+
+## 17. Despliegue (Railway)
+
+A diferencia de otros proyectos del autor (frontends estáticos servidos con nginx), esta app
+es **Next.js con SSR + API routes**, por lo que requiere un **servidor Node** corriendo
+(no un bundle estático). Se despliega en Railway con el mismo estilo que los *backends*
+existentes.
+
+**Enfoque elegido: Dockerfile con `output: 'standalone'`** (consistente con la convención de
+Dockerfiles del repo del autor; imagen pequeña, arranque rápido).
+
+- `next.config` con `output: 'standalone'`.
+- `Dockerfile` multi-stage (deps → build → run) que corre `node server.js`.
+- `railway.toml`: `dockerfilePath = "Dockerfile"`, `healthcheckPath = "/login"`,
+  `healthcheckTimeout = 30`, `restartPolicyType = "on_failure"`.
+
+**Consideraciones Railway:**
+- Bindear a `$PORT` (inyectado por Railway) y host `0.0.0.0`.
+- Railway provee TLS → la cookie `Secure`/`SameSite` (§16) funciona sin config extra.
+- Healthcheck en `/login` (pública); `/home` está protegida y `/` redirige.
+- El mock en memoria (§14) se reinicia por redeploy y **no se comparte entre réplicas**:
+  válido para el challenge, documentado como limitación si se escalara a >1 réplica.
+
+Alternativa documentada: **Nixpacks** (cero config, autodetecta Next.js) con
+`"start": "next start -p ${PORT:-3000}"`. Menos control; se menciona en DECISIONS.md.
