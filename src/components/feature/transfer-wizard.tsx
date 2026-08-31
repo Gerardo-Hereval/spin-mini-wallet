@@ -23,6 +23,7 @@ const ERROR_CODE_MESSAGES: Record<string, string> = {
 
 export function TransferWizard() {
   const wallet = useWallet()
+  const balanceReady = wallet.data !== undefined && !wallet.isLoading
   const balance = wallet.data?.balanceCents ?? fromCents(0)
   const { step, amountRaw, recipient, setAmountRaw, setRecipient, goto, reset } = useTransferStore()
   const form = useTransferForm({ amountRaw, recipient, balanceCents: balance })
@@ -33,7 +34,7 @@ export function TransferWizard() {
   const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null)
 
   const amountError = form.errors.find((e) => e.code !== 'recipient_required')
-  const amountErrorMsg = amountError ? ERROR_CODE_MESSAGES[amountError.code] : undefined
+  const amountErrorMsg = balanceReady && amountError ? ERROR_CODE_MESSAGES[amountError.code] : undefined
 
   async function confirm() {
     const key = idempotencyKey ?? `txn_${Date.now()}_${Math.floor(Math.random() * 1e6)}`
@@ -49,11 +50,17 @@ export function TransferWizard() {
 
   function retry() { void confirm() }
 
+  function startNew() {
+    reset()
+    setIdempotencyKey(null)
+    setResult(null)
+  }
+
   if (step === 'amount') {
     return (
       <div className="mx-auto flex max-w-md flex-col gap-4">
         <AmountInput value={amountRaw} onChange={setAmountRaw} error={amountRaw ? amountErrorMsg : undefined} />
-        <Button disabled={!!amountErrorMsg || amountRaw.trim() === ''} onClick={() => goto('recipient')}>Continuar</Button>
+        <Button disabled={!balanceReady || !!amountErrorMsg || amountRaw.trim() === ''} onClick={() => goto('recipient')}>Continuar</Button>
       </div>
     )
   }
@@ -101,7 +108,7 @@ export function TransferWizard() {
         {result.status === 'success'
           ? <ReceiptView receipt={result.receipt} />
           : <ErrorState status={result.status} onRetry={retry} />}
-        <Button variant="ghost" className="mt-4" onClick={reset}>Nueva transacción</Button>
+        <Button variant="ghost" className="mt-4" onClick={startNew}>Nueva transacción</Button>
       </div>
     )
   }
