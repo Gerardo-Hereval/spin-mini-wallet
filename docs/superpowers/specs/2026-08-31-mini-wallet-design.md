@@ -28,7 +28,7 @@ usuarios".
 | Estado cliente | Zustand | Sesión (persistida) y estado del wizard de transacción. Ligero, sin boilerplate de Redux. |
 | UI / diseño | shadcn/ui + **thegridcn-ui** (tema Tron/Poseidon) | Componentes que uno posee (raw TSX), accesibles; thegridcn aporta identidad visual distintiva sobre Tailwind. |
 | Estilos | Tailwind CSS | Estándar en Next.js, responsive rápido. |
-| Testing unitario | Vitest + React Testing Library | Rápido, buen DX con Next; cubre validaciones, hooks y componentes críticos. |
+| Testing unitario | Vitest (+ RTL solo para render de hooks) | Rápido, buen DX con Next; cubre dominio, hooks y validaciones. Los componentes UI se testean con E2E, no con unitarios. |
 | E2E | Playwright | Estándar de facto, multi-browser, buen soporte para mock/routing determinista. |
 
 ### Nota sobre thegridcn-ui
@@ -54,6 +54,13 @@ la app financiera debe seguir siendo legible y usable. **Pragmatismo sobre espec
 
 Principio central: **separar dominio (reglas de negocio puras) de UI y de infraestructura
 (mock/API)**. El dominio no importa React ni Next; es testeable de forma aislada.
+
+**Componentes UI sin lógica (regla estricta):** los componentes en `components/` son
+**presentacionales** — reciben props y emiten eventos, nada más. No contienen reglas de
+negocio, validación, fetching, ni cálculo de estado derivado. Toda esa lógica vive **fuera**:
+en el dominio (`domain/`), en hooks (`hooks/`), o en los stores (`stores/`). Un componente
+debe poder entenderse sin leer lógica de negocio, y la lógica debe poder testearse sin montar
+un componente. Por eso los componentes UI **no** llevan tests unitarios (§11).
 
 ```
 src/
@@ -175,13 +182,15 @@ Reglas cubiertas: monto > 0, monto ≤ saldo disponible, destinatario obligatori
 
 Estado en `transfer-store` (Zustand). Pasos:
 
-1. **Monto** — `AmountInput` valida formato; convierte a centavos.
-2. **Destinatario** — `ContactPicker`: elegir de favoritos (query) o crear uno nuevo
-   (formulario + `POST /api/contacts`, se guarda en el mock y aparece en la lista).
-3. **Resumen** — muestra monto + destinatario + saldo resultante antes de confirmar.
-   Botón de confirmar deshabilitado si `validateTransaction` falla.
-4. **Confirmación** — `POST /api/transactions` → outcome aleatorio.
-5. **Comprobante / estado de error** — según el outcome.
+1. **Monto** — `AmountInput` es presentacional; un hook (`use-transfer-form`) parsea a
+   centavos y valida formato usando `domain/money`. El componente solo muestra valor y error.
+2. **Destinatario** — `ContactPicker` (presentacional): elegir de favoritos o crear uno nuevo.
+   El fetching/guardado vive en `use-contacts` (`POST /api/contacts`); el nuevo contacto se
+   guarda en el mock y aparece en la lista.
+3. **Resumen** — `TransferSummary` (presentacional) muestra monto + destinatario + saldo
+   resultante. El hook decide si el botón está habilitado usando `validateTransaction`.
+4. **Confirmación** — `use-create-transaction` hace `POST /api/transactions` → outcome aleatorio.
+5. **Comprobante / estado de error** — componentes presentacionales según el outcome.
 
 ## 8. Confirmación aleatoria (5 escenarios)
 
@@ -198,6 +207,12 @@ La aleatoriedad vive en `POST /api/transactions` (`lib/mock/outcome.ts`). Devuel
 
 **Determinismo en tests:** el mock acepta un header/query (`x-mock-outcome`) para forzar un
 escenario específico, de modo que Playwright pueda probar cada rama sin depender del azar.
+
+**Idempotencia (clave para reintentos):** el cliente genera un `Idempotency-Key` por intento
+de transacción y lo reenvía en cada retry. El mock lo registra: si llega una key ya procesada
+con éxito, devuelve el mismo `receipt` en vez de crear un cobro nuevo. Sin esto, un reintento
+tras un timeout podría duplicar la transacción. El reintento usa **backoff + jitter**, no
+reintentos inmediatos.
 
 ## 9. Sesión y navegación
 
@@ -218,16 +233,23 @@ reintento donde aplique.
 
 ## 11. Testing
 
-**Unitario (Vitest + RTL):**
+**División clara:** la lógica se testea con **unitarios** (sin montar UI); la UI se testea
+solo con **E2E**. Los componentes presentacionales **no** llevan tests unitarios.
+
+**Unitario (Vitest) — solo lógica, sin componentes:**
 - `domain/transaction/rules` — todos los edge cases: monto 0, negativo, `null`, > saldo,
   sin destinatario, caso válido.
 - `domain/money` — parse y formateo, redondeo, entradas inválidas.
-- `use-create-transaction` — mapeo de cada outcome a estado de UI.
-- Componentes críticos: `AmountInput` (validación/formato), `TransferSummary`.
+- `use-create-transaction` — mapeo de cada outcome a estado de UI; comportamiento de
+  idempotencia y de reintento con backoff.
+- `use-transfer-form` — validación/parseo del formulario de transacción.
+- `lib/mock/outcome` — selección determinista vía header.
 
-**E2E (Playwright):**
+**E2E (Playwright) — cubre toda la UI:**
 - Happy path: login → home → transfer (elegir contacto, monto) → confirmar → comprobante.
-- Path de error: forzar `network_error` → ver estado de error → reintentar.
+- Path de error: forzar `network_error` → ver estado de error → reintentar (con misma key).
+- Estados de Home: loading / vacío / error.
+- Validaciones visibles: monto 0, monto > saldo, sin destinatario → botón deshabilitado / error.
 - Guard: acceder a `/home` sin sesión → redirect a `/login`.
 
 ## 12. Documentación (entregables)
@@ -249,3 +271,29 @@ reintento donde aplique.
 - El mock es en memoria: los datos se reinician al reiniciar el server.
 - La cookie de sesión no es segura (mock), sin firma ni expiración real.
 - La aleatoriedad de outcomes puede requerir el header determinista para reproducir un caso.
+
+## 15. Escalabilidad (contexto: millones de usuarios)
+
+El challenge pide considerar escalabilidad. Distinguimos lo que este proyecto **demuestra en
+código** de lo que se **documenta** como evolución (DECISIONS.md).
+
+**Demostrado en el código:**
+- **Server Components / SSR** en Home → menos JS al cliente, mejor TTI y menor costo por
+  usuario a escala.
+- **Idempotencia** (`Idempotency-Key`) en la transacción → los reintentos no duplican cobros.
+  Es la decisión más importante para una wallet bajo carga y con UI de retry.
+- **Reintento con backoff + jitter** → evita el "thundering herd" cuando un servicio se degrada.
+- **Movimientos paginados con cursor** → nunca cargar la tabla completa; diseñado para crecer.
+- **Sesión stateless (token en cookie)** → sin store de sesión en servidor; cualquier nodo
+  atiende a cualquier usuario → escalado horizontal trivial.
+- **TanStack Query** → dedupe + cache en cliente reducen requests redundantes.
+- **Dominio puro y portable** → las reglas corren idénticas en cliente, servidor o edge.
+
+**Documentado como evolución (fuera del alcance del mock):**
+- CDN/edge para el shell estático; caché de datos por-usuario con TTL corto / SWR.
+- Separación lectura/escritura: lecturas contra réplicas + Redis; escrituras contra un
+  **ledger append-only** auditable.
+- **Confirmación asíncrona real**: encolar la transacción, procesarla con workers y notificar
+  por websocket/polling — encaja de forma natural con los escenarios de timeout/reintento.
+- Rate limiting por usuario, circuit breakers, observabilidad (tracing, métricas, error
+  budgets) y feature flags para rollout gradual.
