@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { formatMoney } from '@/domain/money/money'
 import type { Receipt } from '@/domain/transaction/types'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
 export function ReceiptView({ receipt }: { receipt: Receipt }) {
@@ -11,7 +11,7 @@ export function ReceiptView({ receipt }: { receipt: Receipt }) {
       <p className="text-2xl font-bold">{formatMoney(receipt.amountCents)}</p>
       <p className="opacity-70">Para {receipt.recipient.name}</p>
       <p className="text-xs opacity-50">ID: {receipt.id}</p>
-      <Button render={<Link href="/home" />} className="mt-2">Volver al inicio</Button>
+      <Link href="/home" className={buttonVariants({ className: 'mt-2' })}>Volver al inicio</Link>
     </Card>
   )
 }

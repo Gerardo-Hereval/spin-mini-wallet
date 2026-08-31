@@ -5,7 +5,7 @@ import { useMovements } from '@/hooks/use-movements'
 import { BalanceCard } from './balance-card'
 import { MovementList } from './movement-list'
 import { AsyncState } from './async-state'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import type { Cents } from '@/domain/money/money'
 import type { User } from '@/domain/session/types'
 import type { Movement } from '@/domain/movement/types'
@@ -20,7 +20,7 @@ export function HomeView({ initialWallet, initialMovements }: Props) {
   return (
     <div className="mx-auto flex max-w-md flex-col gap-6">
       {wallet.data && <BalanceCard name={wallet.data.user.name} balanceCents={wallet.data.balanceCents} />}
-      <Button render={<Link href="/transfer" />}>Nueva transacción</Button>
+      <Link href="/transfer" className={buttonVariants()}>Nueva transacción</Link>
       <section>
         <h2 className="mb-2 font-semibold">Movimientos recientes</h2>
         <AsyncState
