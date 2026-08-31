@@ -8,6 +8,13 @@ describe('toCents', () => {
   it('rejects non-numeric', () => { expect(toCents('abc')).toBeNull() })
   it('rejects empty', () => { expect(toCents('')).toBeNull() })
   it('accepts zero', () => { expect(toCents('0')).toBe(0) })
+  it('handles 1.005 correctly', () => { expect(toCents('1.005')).toBe(101) })
+  it('handles 0.145 correctly', () => { expect(toCents('0.145')).toBe(15) })
+  it('rejects negative', () => { expect(toCents('-5')).toBeNull() })
+})
+
+describe('fromCents', () => {
+  it('rounds to nearest integer', () => { expect(fromCents(12.6)).toBe(13) })
 })
 
 describe('formatMoney', () => {
