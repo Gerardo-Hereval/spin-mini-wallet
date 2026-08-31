@@ -1,30 +1,68 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation } from '@tanstack/react-query'
 import { apiClient } from '@/lib/api-client'
-import { loginSchema } from '@/lib/validation/schemas'
+import { isEmailOrPhone, isValidPassword, MIN_PASSWORD_LENGTH } from '@/lib/validation/identifier'
 import { useSessionStore } from '@/stores/session-store'
 import type { User } from '@/domain/session/types'
 
+type Field = 'identifier' | 'password'
+
+/**
+ * Owns the login form: field state, per-field validation, touched tracking,
+ * submit-gating and the (mock) login mutation. LoginForm stays presentational.
+ */
 export function useLogin() {
   const router = useRouter()
   const setUser = useSessionStore((s) => s.setUser)
-  const [error, setError] = useState<string | null>(null)
+  const [identifier, setIdentifier] = useState('')
+  const [password, setPassword] = useState('')
+  const [touched, setTouched] = useState<Record<Field, boolean>>({ identifier: false, password: false })
+  const [formError, setFormError] = useState<string | null>(null)
+
+  const identifierValid = isEmailOrPhone(identifier)
+  const passwordValid = isValidPassword(password)
+
+  const errors = useMemo(() => {
+    const e: Partial<Record<Field, string>> = {}
+    if (touched.identifier && !identifierValid) e.identifier = 'Ingresa un email o teléfono válido'
+    if (touched.password && !passwordValid) {
+      e.password = `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres`
+    }
+    return e
+  }, [touched, identifierValid, passwordValid])
 
   const mutation = useMutation({
-    mutationFn: (identifier: string) =>
-      apiClient.post<{ user: User }>('/api/auth/login', { identifier }),
+    mutationFn: (body: { identifier: string; password: string }) =>
+      apiClient.post<{ user: User }>('/api/auth/login', body),
     onSuccess: ({ user }) => { setUser(user); router.push('/home') },
-    onError: () => setError('No pudimos iniciar sesión. Intenta de nuevo.'),
+    onError: () => setFormError('No pudimos iniciar sesión. Intenta de nuevo.'),
   })
 
-  async function submit(identifier: string) {
-    setError(null)
-    const parsed = loginSchema.safeParse({ identifier })
-    if (!parsed.success) { setError(parsed.error.issues[0].message); return }
-    await mutation.mutateAsync(identifier).catch(() => {})
+  const canSubmit = identifierValid && passwordValid && !mutation.isPending
+
+  function touch(field: Field) {
+    setTouched((t) => ({ ...t, [field]: true }))
   }
 
-  return { submit, isPending: mutation.isPending, error }
+  async function submit() {
+    setFormError(null)
+    setTouched({ identifier: true, password: true })
+    if (!identifierValid || !passwordValid) return
+    await mutation.mutateAsync({ identifier, password }).catch(() => {})
+  }
+
+  return {
+    identifier,
+    password,
+    setIdentifier,
+    setPassword,
+    touch,
+    errors,
+    formError,
+    canSubmit,
+    isPending: mutation.isPending,
+    submit,
+  }
 }

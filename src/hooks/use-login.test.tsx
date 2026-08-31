@@ -4,7 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useLogin } from './use-login'
 import type { ReactNode } from 'react'
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}))
 
 const wrapper = ({ children }: { children: ReactNode }) => {
   const qc = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
@@ -16,15 +18,27 @@ describe('useLogin', () => {
     vi.stubGlobal('fetch', vi.fn(async () =>
       new Response(JSON.stringify({ user: { id: 'u1', name: 'Carlos' } }), { status: 200 })))
   })
-  it('rejects an invalid identifier without calling the API', async () => {
+
+  it('does not call the API when the identifier is invalid', async () => {
     const { result } = renderHook(() => useLogin(), { wrapper })
-    await act(async () => { await result.current.submit('xx') })
-    expect(result.current.error).toBeTruthy()
+    act(() => { result.current.setIdentifier('xx'); result.current.setPassword('secret123') })
+    await act(async () => { await result.current.submit() })
+    expect(result.current.errors.identifier).toBeTruthy()
     expect(fetch).not.toHaveBeenCalled()
   })
-  it('logs in with a valid email', async () => {
+
+  it('does not call the API when the password is too short', async () => {
     const { result } = renderHook(() => useLogin(), { wrapper })
-    await act(async () => { await result.current.submit('a@b.com') })
+    act(() => { result.current.setIdentifier('a@b.com'); result.current.setPassword('123') })
+    await act(async () => { await result.current.submit() })
+    expect(result.current.errors.password).toBeTruthy()
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('logs in with a valid identifier + password', async () => {
+    const { result } = renderHook(() => useLogin(), { wrapper })
+    act(() => { result.current.setIdentifier('a@b.com'); result.current.setPassword('secret123') })
+    await act(async () => { await result.current.submit() })
     await waitFor(() => expect(fetch).toHaveBeenCalled())
   })
 })

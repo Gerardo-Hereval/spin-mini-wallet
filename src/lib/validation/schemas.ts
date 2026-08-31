@@ -1,13 +1,13 @@
 import { z } from 'zod'
-
-const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const phoneRe = /^\+?[\d\s()-]{7,}$/
+import { isEmailOrPhone, MIN_PASSWORD_LENGTH } from './identifier'
 
 export const loginSchema = z.object({
-  identifier: z.string().trim().refine(
-    (v) => emailRe.test(v) || phoneRe.test(v),
-    { message: 'Ingresa un email o teléfono válido' },
-  ),
+  identifier: z.string().trim().refine(isEmailOrPhone, {
+    message: 'Ingresa un email o teléfono válido',
+  }),
+  password: z.string().min(MIN_PASSWORD_LENGTH, {
+    message: `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres`,
+  }),
 })
 
 export const contactSchema = z.object({

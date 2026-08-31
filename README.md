@@ -4,9 +4,9 @@ Aplicación web de billetera mínima (mini wallet) construida con **Next.js** y 
 
 Flujo principal: **Login → Home → Nueva Transacción → Confirmación / Comprobante**.
 
-- **Login**: autenticación simulada (usuario mock + rate limiting básico).
+- **Login**: autenticación simulada (usuario mock + rate limiting básico). El formulario pide **email o teléfono** y una **contraseña** (mock: se acepta cualquier valor de al menos 6 caracteres; no hay auth real). Validación inline por campo (al salir del campo y al enviar) con el botón deshabilitado hasta que ambos sean válidos.
 - **Home**: muestra el saldo y el historial de movimientos recientes, renderizado en el servidor para el primer paint.
-- **Nueva Transacción**: wizard de transferencia (elegir contacto/monto → confirmar → resultado).
+- **Nueva Transacción**: wizard de transferencia. El destinatario se elige de una lista de favoritos (con avatar de iniciales, buscador y estado seleccionado) o se crea uno nuevo con validación de formato; luego monto → confirmar → resultado.
 - **Confirmación / Comprobante**: la transacción puede resolver en distintos desenlaces simulados aleatoriamente (éxito, fondos insuficientes, error de red, timeout, etc.), cada uno con su propia pantalla de resultado.
 
 ## Stack
@@ -14,7 +14,7 @@ Flujo principal: **Login → Home → Nueva Transacción → Confirmación / Com
 - **Next.js 16** (App Router)
 - **React 19**
 - **TypeScript** en modo `strict`
-- **Tailwind CSS 4** + **shadcn/ui**, con el tema `thegridcn-ui` (Poseidon)
+- **Tailwind CSS 4** + **shadcn/ui**, con el tema `thegridcn-ui` (Poseidon) y un fondo de grid neón sutil (CSS puro, sin dependencias)
 - **Zustand**: estado de cliente (sesión) y estado del wizard de transferencia
 - **TanStack Query**: estado de servidor (fetching, cache, loading/empty/error)
 - **zod**: validación de datos en el borde de cada ruta (cliente y servidor)

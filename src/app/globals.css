@@ -69,3 +69,29 @@
     @apply font-sans;
   }
 }
+/*
+ * Subtle Tron/Poseidon neon grid backdrop. Pure CSS, no dependencies.
+ * Sits behind app content (negative z-index, non-interactive) and fades out
+ * toward the edges so it never competes with balances or forms.
+ */
+.grid-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--background);
+  background-image:
+    linear-gradient(to right, color-mix(in oklch, var(--primary) 14%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--primary) 14%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
+  background-position: center -1px;
+  -webkit-mask-image: radial-gradient(130% 85% at 50% -5%, #000 32%, transparent 74%);
+  mask-image: radial-gradient(130% 85% at 50% -5%, #000 32%, transparent 74%);
+}
+.grid-bg::after {
+  /* faint top glow in the theme's primary hue */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(60% 40% at 50% 0%, color-mix(in oklch, var(--primary) 12%, transparent), transparent 70%);
+}
