@@ -97,4 +97,4 @@ Como la confirmación resuelve en un desenlace aleatorio, en **modo desarrollo**
 
 El desarrollo de este proyecto fue asistido por IA (Claude Code) en una sesión de trabajo enfocada, siguiendo un flujo de **spec → plan de implementación → desarrollo por subagentes** (una tarea por subagente) con revisión de código adversarial entre tareas.
 
-_Horas reales invertidas: **[completar por el candidato]**._
+_Horas reales invertidas: **~8 horas** (aproximadas)._
