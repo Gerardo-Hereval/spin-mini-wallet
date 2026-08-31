@@ -297,3 +297,33 @@ código** de lo que se **documenta** como evolución (DECISIONS.md).
   por websocket/polling — encaja de forma natural con los escenarios de timeout/reintento.
 - Rate limiting por usuario, circuit breakers, observabilidad (tracing, métricas, error
   budgets) y feature flags para rollout gradual.
+
+## 16. Seguridad
+
+El challenge no pide seguridad ni autenticación reales, así que la sesión es un mock. Pero el
+diseño adopta prácticas *security-adjacent* que un entorno financiero exige, y documenta el
+resto como evolución.
+
+**Ya presente en el diseño:**
+- **Validación en servidor** (§5) — el API route revalida; nunca se confía solo en el cliente.
+- **Idempotencia** (§8) — evita duplicar/replay de transacciones.
+- **Autorización por sesión** — el servidor deriva el usuario de la cookie; las rutas de
+  wallet/movimientos/transacciones se scopean a ese usuario. Nunca se acepta un `userId` del
+  cliente (previene IDOR).
+
+**Se sube al alcance (barato y demostrable):**
+- **Cookie endurecida**: `httpOnly` (mitiga robo por XSS), `Secure`, `SameSite=Lax` (mitiga CSRF).
+- **Headers de seguridad** vía `next.config`/middleware: CSP, `X-Frame-Options`/`frame-ancestors`
+  (anti-clickjacking), `X-Content-Type-Options: nosniff`, `Referrer-Policy`.
+- **Validación de esquema con zod** en el borde de cada API route (entrada tipada y saneada).
+- **Rate-limit stub** en `/api/auth/login` (contador en memoria) para mostrar intención
+  anti-fuerza-bruta.
+- **Sin secretos en el bundle** — variables de entorno solo del lado servidor.
+
+**Documentado como evolución (fuera del alcance del mock):**
+- Tokens firmados/opacos con expiración corta + refresh + rotación; MFA; hashing de password
+  (argon2/bcrypt).
+- CSRF token (double-submit) para requests que mutan estado.
+- HTTPS/HSTS, WAF, escaneo de dependencias, SRI.
+- Autorización fina + límites de velocidad/monto, detección de fraude y **audit log
+  append-only** (el mismo ledger de §15).
