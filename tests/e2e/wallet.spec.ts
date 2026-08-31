@@ -64,6 +64,27 @@ test('network error shows retry option', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Reintentar' })).toBeVisible()
 })
 
+test('returning to transfer after a success starts a fresh flow (no blank screen)', async ({ page }) => {
+  await forceOutcome(page, 'success')
+  await login(page)
+  await page.getByRole('link', { name: 'Nueva transacción' }).click()
+  await page.getByLabel('Monto').fill('10')
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await pickFirstContact(page)
+  await page.getByRole('button', { name: 'Continuar' }).click()
+  await page.getByRole('button', { name: 'Confirmar' }).click()
+  await expect(page.getByTestId('receipt')).toBeVisible()
+
+  // Leave via "Volver al inicio" (a plain link that does NOT reset the wizard
+  // store), then navigate back to /transfer. It must show the amount step, not
+  // a blank screen left by the previous 'result' step.
+  await page.getByRole('link', { name: 'Volver al inicio' }).click()
+  await expect(page).toHaveURL(/\/home/)
+  await page.getByRole('link', { name: 'Nueva transacción' }).click()
+  await expect(page).toHaveURL(/\/transfer/)
+  await expect(page.getByLabel('Monto')).toBeVisible()
+})
+
 test('two transfers in a row are each processed with their own receipt', async ({ page }) => {
   await forceOutcome(page, 'success')
   await login(page)
