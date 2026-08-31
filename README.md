@@ -1,5 +1,7 @@
 # Mini Wallet
 
+**Repositorio:** https://github.com/Gerardo-Hereval/spin-mini-wallet
+
 Aplicación web de billetera mínima (mini wallet) construida con **Next.js** y **TypeScript**. Simula el flujo completo de una transferencia de dinero entre contactos, con datos mockeados en memoria (sin base de datos ni backend externo).
 
 Flujo principal: **Login → Home → Nueva Transacción → Confirmación / Comprobante**.
