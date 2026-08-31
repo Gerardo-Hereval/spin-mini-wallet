@@ -56,40 +56,40 @@ export function TransferWizard() {
     setResult(null)
   }
 
-  if (step === 'amount') {
-    return (
-      <div className="mx-auto flex max-w-md flex-col gap-4">
-        <AmountInput value={amountRaw} onChange={setAmountRaw} error={amountRaw ? amountErrorMsg : undefined} />
-        <Button disabled={!balanceReady || !!amountErrorMsg || amountRaw.trim() === ''} onClick={() => goto('recipient')}>Continuar</Button>
-      </div>
-    )
-  }
-  if (step === 'recipient') {
-    return (
-      <div className="mx-auto flex max-w-md flex-col gap-4">
-        <AsyncState isLoading={contacts.isLoading} isError={contacts.isError} isEmpty={false}>
-          {contacts.data && (
-            <ContactPicker
-              contacts={contacts.data.contacts}
-              selectedId={recipient?.id ?? null}
-              onSelect={setRecipient}
-              onCreate={async (name, handle) => {
-                const { contact } = await addContact.mutateAsync({ name, handle })
-                setRecipient(contact)
-              }}
-            />
-          )}
-        </AsyncState>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => goto('amount')}>Atrás</Button>
-          <Button disabled={!recipient} onClick={() => goto('summary')}>Continuar</Button>
+  function renderStep() {
+    if (step === 'amount') {
+      return (
+        <div className="flex flex-col gap-4">
+          <AmountInput value={amountRaw} onChange={setAmountRaw} error={amountRaw ? amountErrorMsg : undefined} />
+          <Button disabled={!balanceReady || !!amountErrorMsg || amountRaw.trim() === ''} onClick={() => goto('recipient')}>Continuar</Button>
         </div>
-      </div>
-    )
-  }
-  if (step === 'summary' && recipient && form.amountCents !== null) {
-    return (
-      <div className="mx-auto max-w-md">
+      )
+    }
+    if (step === 'recipient') {
+      return (
+        <div className="flex flex-col gap-4">
+          <AsyncState isLoading={contacts.isLoading} isError={contacts.isError} isEmpty={false}>
+            {contacts.data && (
+              <ContactPicker
+                contacts={contacts.data.contacts}
+                selectedId={recipient?.id ?? null}
+                onSelect={setRecipient}
+                onCreate={async (name, handle) => {
+                  const { contact } = await addContact.mutateAsync({ name, handle })
+                  setRecipient(contact)
+                }}
+              />
+            )}
+          </AsyncState>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => goto('amount')}>Atrás</Button>
+            <Button disabled={!recipient} onClick={() => goto('summary')}>Continuar</Button>
+          </div>
+        </div>
+      )
+    }
+    if (step === 'summary' && recipient && form.amountCents !== null) {
+      return (
         <TransferSummary
           amountCents={form.amountCents}
           recipient={recipient}
@@ -99,18 +99,26 @@ export function TransferWizard() {
           isPending={createTx.isPending}
           canConfirm={form.isValid}
         />
-      </div>
-    )
+      )
+    }
+    if (step === 'result' && result) {
+      return (
+        <div className="flex flex-col gap-4">
+          {result.status === 'success'
+            ? <ReceiptView receipt={result.receipt} />
+            : <ErrorState status={result.status} onRetry={retry} />}
+          <div className="flex justify-center">
+            <Button variant="ghost" onClick={startNew}>Nueva transacción</Button>
+          </div>
+        </div>
+      )
+    }
+    return null
   }
-  if (step === 'result' && result) {
-    return (
-      <div className="mx-auto max-w-md">
-        {result.status === 'success'
-          ? <ReceiptView receipt={result.receipt} />
-          : <ErrorState status={result.status} onRetry={retry} />}
-        <Button variant="ghost" className="mt-4" onClick={startNew}>Nueva transacción</Button>
-      </div>
-    )
-  }
-  return null
+
+  return (
+    <div className="flex min-h-[calc(100dvh-8rem)] w-full flex-col items-center justify-center py-6">
+      <div className="w-full max-w-md">{renderStep()}</div>
+    </div>
+  )
 }

@@ -3,6 +3,7 @@ import { formatMoney } from '@/domain/money/money'
 import type { Receipt } from '@/domain/transaction/types'
 import { buttonVariants } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { ReceiptShareButton } from './receipt-share-button'
 
 export function ReceiptView({ receipt }: { receipt: Receipt }) {
   return (
@@ -11,7 +12,10 @@ export function ReceiptView({ receipt }: { receipt: Receipt }) {
       <p className="text-2xl font-bold">{formatMoney(receipt.amountCents)}</p>
       <p className="opacity-70">Para {receipt.recipient.name}</p>
       <p className="text-xs opacity-50">ID: {receipt.id}</p>
-      <Link href="/home" className={buttonVariants({ className: 'mt-2' })}>Volver al inicio</Link>
+      <div className="mt-3 flex flex-col items-center gap-2">
+        <ReceiptShareButton receipt={receipt} />
+        <Link href="/home" className={buttonVariants({ variant: 'ghost' })}>Volver al inicio</Link>
+      </div>
     </Card>
   )
 }

@@ -7,7 +7,7 @@ Flujo principal: **Login → Home → Nueva Transacción → Confirmación / Com
 - **Login**: autenticación simulada (usuario mock + rate limiting básico). El formulario pide **email o teléfono** y una **contraseña** (mock: se acepta cualquier valor de al menos 6 caracteres; no hay auth real). Validación inline por campo (al salir del campo y al enviar) con el botón deshabilitado hasta que ambos sean válidos.
 - **Home**: muestra el saldo y el historial de movimientos recientes, renderizado en el servidor para el primer paint.
 - **Nueva Transacción**: wizard de transferencia. El destinatario se elige de una lista de favoritos (con avatar de iniciales, buscador y estado seleccionado) o se crea uno nuevo con validación de formato; luego monto → confirmar → resultado.
-- **Confirmación / Comprobante**: la transacción puede resolver en distintos desenlaces simulados aleatoriamente (éxito, fondos insuficientes, error de red, timeout, etc.), cada uno con su propia pantalla de resultado.
+- **Confirmación / Comprobante**: la transacción puede resolver en distintos desenlaces simulados aleatoriamente (éxito, fondos insuficientes, error de red, timeout, etc.), cada uno con su propia pantalla de resultado. Los desenlaces de error indican explícitamente que no se realizó ningún cargo. El comprobante de éxito se puede **compartir** (Web Share API en móvil → WhatsApp/email/etc., con fallback a copiar al portapapeles en escritorio) en un formato de texto genérico.
 
 ## Stack
 
