@@ -22,7 +22,7 @@ La revisión de código adversarial detectó y corrigió varios errores reales p
 
 - Una variable de fuente `--font-sans` que se **auto-referenciaba a sí misma** en la configuración de estilos.
 - **Redondeo de dinero usando aritmética de punto flotante** (en vez de centavos enteros), con riesgo de imprecisiones.
-- Un **contacto nuevo que se persistía antes de validar** la transacción, en lugar de solo tras un resultado exitoso.
+- En la ruta `POST /api/transactions` (camino que acepta un `newContact` embebido, distinto del flujo de UI donde el contacto se guarda antes vía `POST /api/contacts`): el contacto embebido se persistía antes de validar la transacción, en lugar de solo tras un resultado exitoso, lo que podía dejar contactos huérfanos ante reintentos por API.
 - Una **condición de carrera de doble cargo**: dos requests concurrentes con la misma intención de transferencia podían procesarse ambas sin la reserva de idempotencia.
 - Una **idempotency-key que se regeneraba en cada reintento** (en vez de reutilizarse dentro del mismo intento) y que **no se limpiaba entre transacciones distintas**, lo cual podía provocar que una segunda transferencia se tratara como replay de la primera.
 - Un **parpadeo de "saldo insuficiente"** que aparecía brevemente mientras el saldo real todavía se estaba cargando, antes de tener el dato confirmado.
