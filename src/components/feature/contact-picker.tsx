@@ -29,7 +29,7 @@ export function ContactPicker({ contacts, selectedId, onSelect, onCreate }: {
   const nameValid = name.trim().length > 0
   const handleValid = isEmailOrPhone(handle)
   const nameError = touched.name && !nameValid ? 'Ingresa un nombre' : undefined
-  const handleError = touched.handle && !handleValid ? 'Email o teléfono no válido' : undefined
+  const handleError = touched.handle && !handleValid ? 'Email o teléfono (10 dígitos) no válido' : undefined
 
   function create() {
     setTouched({ name: true, handle: true })

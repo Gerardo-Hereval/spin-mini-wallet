@@ -7,7 +7,7 @@ export const SEED_USER: User = { id: 'u1', name: 'Carlos Valenzuela' }
 export const SEED_BALANCE = fromCents(125_000) // $1,250.00
 export const SEED_CONTACTS: Contact[] = [
   { id: 'c1', name: 'Ana Díaz', handle: 'ana@spin.mx' },
-  { id: 'c2', name: 'Luis Pérez', handle: '+52 55 1234 5678' },
+  { id: 'c2', name: 'Luis Pérez', handle: '55 1234 5678' },
 ]
 export const SEED_MOVEMENTS: Movement[] = [
   { id: 'm1', description: 'Depósito', amountCents: fromCents(50_000), direction: 'in', createdAt: '2026-08-30T10:00:00Z' },

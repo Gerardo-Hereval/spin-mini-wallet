@@ -26,7 +26,7 @@ export function useLogin() {
 
   const errors = useMemo(() => {
     const e: Partial<Record<Field, string>> = {}
-    if (touched.identifier && !identifierValid) e.identifier = 'Ingresa un email o teléfono válido'
+    if (touched.identifier && !identifierValid) e.identifier = 'Ingresa un email o un teléfono de 10 dígitos'
     if (touched.password && !passwordValid) {
       e.password = `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres`
     }
