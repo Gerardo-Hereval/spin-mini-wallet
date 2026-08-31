@@ -10,7 +10,7 @@ export interface TransferPayload {
   forcedOutcome?: string
 }
 
-// A stable idempotency key per user attempt; regenerated only for a fresh attempt.
+// Generate a new idempotency key. Once assigned to the payload, it persists across retries.
 function newKey(): string {
   return `txn_${Date.now()}_${Math.floor(Math.random() * 1e6)}`
 }
@@ -21,7 +21,8 @@ export function useCreateTransaction() {
     retry: 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000) + Math.random() * 200,
     mutationFn: async (payload) => {
-      const key = payload.idempotencyKey ?? newKey()
+      payload.idempotencyKey ??= newKey()
+      const key = payload.idempotencyKey
       const headers: Record<string, string> = { 'idempotency-key': key }
       if (payload.forcedOutcome) headers['x-mock-outcome'] = payload.forcedOutcome
       const res = await apiClient.raw('/api/transactions', {
