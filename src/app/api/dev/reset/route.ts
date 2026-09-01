@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { store } from '@/lib/mock/store'
+import { store } from '@/lib/db/store'
 import { SESSION_COOKIE } from '@/lib/session'
 
 export async function POST() {

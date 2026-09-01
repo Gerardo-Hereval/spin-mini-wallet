@@ -2,7 +2,9 @@
 
 **Repositorio:** https://github.com/Gerardo-Hereval/spin-mini-wallet
 
-Aplicación web de billetera mínima (mini wallet) construida con **Next.js** y **TypeScript**. Simula el flujo completo de una transferencia de dinero entre contactos, con datos mockeados en memoria (sin base de datos ni backend externo).
+Aplicación web de billetera mínima (mini wallet) construida con **Next.js** y **TypeScript**. Simula el flujo completo de una transferencia de dinero entre contactos.
+
+> **Rama `feat/sqlite-backend`:** esta rama reemplaza el store mock en memoria por una base de datos **SQLite** (`better-sqlite3`) detrás de las API Routes de Next, de modo que los datos **persisten entre reinicios**. La rama `main` (tag `v1.0.0`) conserva la versión con datos mockeados en memoria. La capa de dominio, las rutas, la UI y los tests no cambiaron: solo se intercambió el adaptador de persistencia (`src/lib/db/`).
 
 Flujo principal: **Login → Home → Nueva Transacción → Confirmación / Comprobante**.
 
@@ -71,13 +73,28 @@ El proyecto se despliega vía **Docker** usando el modo `standalone` de Next.js 
 - `railway.toml`: le indica a Railway usar ese `Dockerfile`, con `healthcheckPath = "/login"`, `healthcheckTimeout = 30` y `restartPolicyType = "on_failure"`.
 - Railway provee **TLS** en el dominio público, por lo que la cookie de sesión con el atributo `Secure` funciona correctamente en producción.
 
+### Persistencia (SQLite) y Docker Compose
+
+Los datos se guardan en una base de datos **SQLite** (`better-sqlite3`) accedida únicamente desde las API Routes (nunca desde el cliente). El esquema se crea y se siembra automáticamente al primer arranque (`src/lib/db/connection.ts`); el acceso vive en un `store` con la misma interfaz que tenía el mock (`src/lib/db/store.ts`), así que el resto de la app no cambió.
+
+- **Local**: `npm run dev` crea la BD en `./data/wallet.db` (ignorada por git). Borra esa carpeta para volver al estado inicial.
+- **Docker Compose** (levanta todo con un comando):
+
+```bash
+docker compose up --build
+# app en http://localhost:3000, BD persistida en el volumen db-data
+```
+
+El `docker-compose.yml` monta un volumen `db-data:/data` y pasa `DATABASE_PATH=/data/wallet.db`, por lo que los datos sobreviven a reinicios y recreaciones del contenedor. En test, la BD usa `:memory:` (aislada por archivo de test).
+
 ### Variables de entorno
 
+- `DATABASE_PATH`: ruta del archivo SQLite (por defecto `./data/wallet.db`; en Docker `/data/wallet.db`). En `NODE_ENV=test` se usa `:memory:`.
 - `ALLOW_DEMO_RESET`: controla si el botón de "Reiniciar demo" está habilitado. Con `ALLOW_DEMO_RESET=false` el botón y el endpoint de reset quedan desactivados (útil para no exponer un reset público sin restricciones en un entorno compartido).
 
 ## Reiniciar demo
 
-Tanto en el header de la aplicación como en la pantalla de login hay un botón **"Reiniciar demo"** que llama a `POST /api/dev/reset`. Este endpoint restablece los datos mock (saldo, movimientos, contactos) a su estado inicial y cierra la sesión activa, permitiendo repetir la demo desde cero. Este botón se puede desactivar con `ALLOW_DEMO_RESET=false`.
+Tanto en el header de la aplicación como en la pantalla de login hay un botón **"Reiniciar demo"** que llama a `POST /api/dev/reset`. Este endpoint restablece los datos (saldo, movimientos, contactos) a su estado inicial (re-siembra la BD) y cierra la sesión activa, permitiendo repetir la demo desde cero. Este botón se puede desactivar con `ALLOW_DEMO_RESET=false`.
 
 ## Forzar el desenlace (solo desarrollo)
 
@@ -85,11 +102,11 @@ Como la confirmación resuelve en un desenlace aleatorio, en **modo desarrollo**
 
 ## Limitaciones conocidas
 
-- **Mock en memoria**: los datos (saldo, movimientos, contactos) viven en un singleton en memoria del proceso. Se reinician en cada redeploy y **no se comparten entre réplicas** — la app está pensada para correr con una sola réplica.
+- **SQLite de archivo único**: los datos persisten en un archivo SQLite local/volumen. Es ideal para una sola instancia; para un despliegue multi-réplica se necesitaría un motor cliente-servidor (Postgres/MySQL) o SQLite replicado. El acceso concurrente dentro del proceso está protegido con transacciones y una reserva de `Idempotency-Key`.
 - **Cookie de sesión mock**: la cookie de sesión (`httpOnly`, `Secure`, `SameSite=Lax`) no está firmada criptográficamente; es una simulación de sesión para efectos de la demo, no una implementación de sesión apta para producción real.
 - **CSP con `'unsafe-inline'`**: la Content-Security-Policy configurada permite `'unsafe-inline'`, lo cual no es lo ideal para un endurecimiento de seguridad completo.
 - **Rate limiter en memoria**: el limitador de intentos de login vive en memoria del proceso, por lo que no funciona correctamente en un despliegue multi-instancia.
-- **Estado del mock y E2E**: el estado del mock (singleton en `globalThis`) se puede "drenar" (por ejemplo, quedarse sin saldo o sin contactos disponibles) si se corre la suite E2E repetidamente contra un servidor de desarrollo reutilizado sin reiniciarlo entre corridas.
+- **Estado persistente y E2E**: como ahora la BD persiste en archivo, el saldo se puede "drenar" al correr la suite E2E repetidamente. Borra `./data/` (o el volumen `db-data`) para volver al estado inicial antes de una corrida limpia.
 - **Timeout simulado sin `AbortController`**: el escenario `timeout` se simula con un delay del servidor (9-12s) y no con un `AbortController` del lado del cliente, por lo que ante un `timeout` aleatorio el usuario espera el delay completo antes de ver el estado — mejora futura.
 - **Header `x-mock-outcome`**: es una utilidad de pruebas para forzar un resultado de confirmación específico; ahora solo se honra fuera de producción (`NODE_ENV !== 'production'`).
 

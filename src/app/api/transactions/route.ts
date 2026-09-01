@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { transactionSchema } from '@/lib/validation/schemas'
-import { store } from '@/lib/mock/store'
+import { store } from '@/lib/db/store'
 import { fromCents } from '@/domain/money/money'
 import { validateTransaction } from '@/domain/transaction/rules'
 import type { TransactionResult } from '@/domain/transaction/types'

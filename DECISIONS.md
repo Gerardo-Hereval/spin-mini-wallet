@@ -28,6 +28,12 @@ Mezclar ambos en un solo store habría obligado a reimplementar a mano el manejo
 
 Esta separación hace que el dominio sea testeable de forma aislada (sin renderizar React) y que la lógica de negocio no quede duplicada ni dispersa entre cliente y servidor.
 
+## Persistencia intercambiable (rama `feat/sqlite-backend`)
+
+El estado vive detrás de un `store` con una interfaz pequeña y estable (`getWallet`, `getMovements`, `listContacts`, `addContact`, `getReceiptByKey`, `applyTransaction`, `beginKey`/`endKey`, `reset`). En `main` ese `store` es un singleton en memoria (mock); en esta rama se reemplaza por uno respaldado en **SQLite** (`better-sqlite3`, `src/lib/db/`) **sin tocar** dominio, rutas, UI ni tests — solo el adaptador de persistencia. Es exactamente el beneficio de haber aislado la persistencia detrás de una interfaz: cambiar de mock a BD real es un cambio local.
+
+Se eligió SQLite (mismo motor que otras apps del autor) por pragmatismo: cero servicios extra, un archivo persistente, y transacciones ACID reales para el cobro. El cobro + la idempotencia se ejecutan dentro de una **transacción SQLite**, y se conserva la reserva síncrona de `Idempotency-Key` para evitar doble cargo por requests concurrentes. Se levanta todo con `docker compose up` (volumen persistente).
+
 ## Reglas de negocio en el lugar correcto
 
 `validateTransaction` es una función pura del dominio que se reutiliza en **dos lugares**:

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { POST } from './route'
-import { store } from '@/lib/mock/store'
+import { store } from '@/lib/db/store'
 import { SEED_BALANCE } from '@/lib/mock/data'
 import { fromCents } from '@/domain/money/money'
 
