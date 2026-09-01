@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { loginSchema } from '@/lib/validation/schemas'
-import { store } from '@/lib/mock/store'
+import { store } from '@/lib/db/store'
 import { SESSION_COOKIE, encodeSession } from '@/lib/session'
 import { randomDelay } from '@/lib/mock/latency'
 import { checkRateLimit } from '@/lib/security/rate-limit'

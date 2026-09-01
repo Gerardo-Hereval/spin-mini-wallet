@@ -1,4 +1,4 @@
-import { store } from '@/lib/mock/store'
+import { store } from '@/lib/db/store'
 import { HomeView } from '@/components/feature/home-view'
 
 export default function HomePage() {

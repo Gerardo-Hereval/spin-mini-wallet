@@ -3,6 +3,7 @@ import { SECURITY_HEADERS } from './src/lib/security/headers'
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  serverExternalPackages: ['better-sqlite3'],
   async headers() {
     return [{ source: '/:path*', headers: SECURITY_HEADERS }]
   },

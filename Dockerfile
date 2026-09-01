@@ -1,5 +1,6 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
+RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json ./
 RUN npm ci
 
@@ -12,8 +13,10 @@ RUN npm run build
 FROM node:22-alpine AS run
 WORKDIR /app
 ENV NODE_ENV=production
+ENV DATABASE_PATH=/data/wallet.db
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
+RUN mkdir -p /data
 EXPOSE 3000
 CMD ["node", "server.js"]

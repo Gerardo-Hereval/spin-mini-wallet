@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { POST } from './route'
 import { encodeSession } from '@/lib/session'
-import { store } from '@/lib/mock/store'
+import { store } from '@/lib/db/store'
 
 function req(body: unknown, headers: Record<string, string> = {}) {
   return new Request('http://localhost/api/transactions', {

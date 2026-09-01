@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { store } from '@/lib/mock/store'
+import { store } from '@/lib/db/store'
 import { contactSchema } from '@/lib/validation/schemas'
 
 export async function GET() {

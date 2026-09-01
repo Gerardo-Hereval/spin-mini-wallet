@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { store } from '@/lib/mock/store'
+import { store } from '@/lib/db/store'
 import { randomDelay } from '@/lib/mock/latency'
 
 export async function GET() {
